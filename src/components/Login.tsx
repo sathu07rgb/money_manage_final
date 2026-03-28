@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getUsers, getUserEmail } from '../auth';
+import { getUsers } from '../auth';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertTriangle, Shield } from 'lucide-react';
 
 const Login: React.FC = () => {
@@ -164,7 +164,7 @@ const Login: React.FC = () => {
                         </form>
                     </div>
                 </div>
-                <p className="text-center text-white/70 text-xs mt-6">© 2024 MoneyManager. All rights reserved.</p>
+                <p className="text-center text-white/70 text-xs mt-6">© 2026 MoneyManager. All rights reserved.</p>
             </div>
         </div>
     );

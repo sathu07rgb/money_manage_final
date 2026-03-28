@@ -5,8 +5,14 @@ export interface User {
     password: string;
 }
 
-export const getUsers = (): User[] =>
-    JSON.parse(localStorage.getItem('mm_users') || '[]');
+export const getUsers = (): User[] => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem('mm_users') || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
 
 export const saveUsers = (users: User[]): void =>
     localStorage.setItem('mm_users', JSON.stringify(users));

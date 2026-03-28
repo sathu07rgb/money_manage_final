@@ -2,26 +2,27 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-    DollarSign, TrendingUp, TrendingDown, Trash2, Plus,
-    Moon, Sun, PieChart, ArrowUpRight, ArrowDownRight,
-    Check, Target, Award, Mail, Phone, LogOut, ChevronDown, Search
+    LayoutDashboard, Receipt, PieChart, Settings, Search,
+    ChevronDown, Check, Trash2, Plus, Moon, Sun, LogOut,
+    Bell, Target, Zap, ArrowUpRight, ArrowDownRight, Fingerprint,
+    Wallet, Filter, TrendingUp, TrendingDown, User, Palette,
+    ShieldCheck, RefreshCw
 } from 'lucide-react';
 import {
-    LineChart, Line, PieChart as RechartsPie, Pie, Cell,
-    ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid
+    AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
+    ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend
 } from 'recharts';
 
-/* ─── Types ─────────────────────────────────────────────────────────── */
+/* ─── Types & Constants ────────────────────────────────────────────────────── */
 interface Transaction {
     id: string; type: 'income' | 'expense'; amount: number;
     category: string; source?: string; date: string; timestamp: number;
 }
 interface Currency { code: string; symbol: string; name: string; country: string; }
 
-/* ─── Constants ─────────────────────────────────────────────────────── */
 const EXPENSE_CATEGORIES = ['Food & Dining', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Other'];
 const INCOME_SOURCES = ['Salary', 'Freelance', 'Investment', 'Business', 'Gift', 'Other'];
-const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#f97316'];
+const CHART_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#0ea5e9', '#3b82f6'];
 
 const CURRENCIES: Currency[] = [
     { code: 'USD', symbol: '$', name: 'US Dollar', country: 'United States' },
@@ -30,174 +31,59 @@ const CURRENCIES: Currency[] = [
     { code: 'INR', symbol: '₹', name: 'Indian Rupee', country: 'India' },
     { code: 'JPY', symbol: '¥', name: 'Japanese Yen', country: 'Japan' },
     { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', country: 'Canada' },
-    { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', country: 'Australia' },
-    { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc', country: 'Switzerland' },
-    { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', country: 'China' },
-    { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', country: 'Singapore' },
-    { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', country: 'UAE' },
-    { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', country: 'Brazil' },
-    { code: 'KRW', symbol: '₩', name: 'South Korean Won', country: 'South Korea' },
-    { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso', country: 'Mexico' },
-    { code: 'ZAR', symbol: 'R', name: 'South African Rand', country: 'South Africa' },
-    { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal', country: 'Saudi Arabia' },
-    { code: 'TRY', symbol: '₺', name: 'Turkish Lira', country: 'Turkey' },
-    { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar', country: 'Hong Kong' },
-    { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', country: 'Sweden' },
-    { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone', country: 'Norway' },
+    { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', country: 'Australia' }
 ];
 
-/* ─── CSS Variables (injected into :root and .dark) ─────────────────── */
-const CSS_VARS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-:root {
-  --mm-bg: #f0f4ff;
-  --mm-card: rgba(255,255,255,0.75);
-  --mm-card-border: rgba(255,255,255,0.9);
-  --mm-text: #1a1a1a;
-  --mm-text-muted: #64748b;
-  --mm-primary: #3b82f6;
-  --mm-success: #10b981;
-  --mm-danger: #ef4444;
-  --mm-nav: rgba(255,255,255,0.85);
-  --mm-nav-border: rgba(226,232,240,0.8);
-  --mm-input-bg: rgba(248,250,252,0.9);
-  --mm-input-border: #e2e8f0;
-  --mm-shadow: 0 8px 32px rgba(59,130,246,0.10);
-  --mm-shadow-hover: 0 16px 48px rgba(59,130,246,0.18);
-}
-.mm-dark {
-  --mm-bg: #0f172a;
-  --mm-card: rgba(30,41,59,0.80);
-  --mm-card-border: rgba(51,65,85,0.8);
-  --mm-text: #f1f5f9;
-  --mm-text-muted: #94a3b8;
-  --mm-primary: #60a5fa;
-  --mm-success: #34d399;
-  --mm-danger: #f87171;
-  --mm-nav: rgba(15,23,42,0.90);
-  --mm-nav-border: rgba(51,65,85,0.7);
-  --mm-input-bg: rgba(30,41,59,0.9);
-  --mm-input-border: #334155;
-  --mm-shadow: 0 8px 32px rgba(0,0,0,0.40);
-  --mm-shadow-hover: 0 16px 48px rgba(0,0,0,0.55);
-}
-.mm-root { font-family: 'Inter', system-ui, sans-serif; color: var(--mm-text); }
-.mm-card {
-  background: var(--mm-card);
-  border: 1px solid var(--mm-card-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 20px;
-  box-shadow: var(--mm-shadow);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
-}
-.mm-card:hover { box-shadow: var(--mm-shadow-hover); transform: translateY(-3px); }
-.mm-input {
-  background: var(--mm-input-bg);
-  border: 2px solid var(--mm-input-border);
-  color: var(--mm-text);
-  border-radius: 12px;
-  padding: 12px 16px;
-  width: 100%;
-  outline: none;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.mm-input:focus { border-color: var(--mm-primary); box-shadow: 0 0 0 4px rgba(59,130,246,0.12); }
-.mm-nav {
-  background: var(--mm-nav);
-  border-bottom: 1px solid var(--mm-nav-border);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-`;
-
-/* ─── Currency Selector ──────────────────────────────────────────────── */
+/* ─── Currency Selector ──────────────────────────────────────────────────── */
 function CurrencySelector({ current, onChange }: { current: Currency; onChange: (c: Currency) => void }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
+        const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const filtered = CURRENCIES.filter(c =>
-        !search || c.code.toLowerCase().includes(search.toLowerCase()) ||
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.country.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = CURRENCIES.filter(c => !search || c.code.toLowerCase().includes(search.toLowerCase()) || c.name.toLowerCase().includes(search.toLowerCase()));
 
     return (
-        <div ref={ref} style={{ position: 'relative', zIndex: 300 }}>
+        <div ref={ref} className="relative z-[100]">
             <button
-                onClick={() => setOpen(v => !v)}
-                style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '7px 12px', borderRadius: 10, border: '2px solid var(--mm-input-border)',
-                    background: 'var(--mm-input-bg)', color: 'var(--mm-text)',
-                    cursor: 'pointer', fontWeight: 700, fontSize: 13,
-                    transition: 'border-color 0.2s, box-shadow 0.2s',
-                    fontFamily: 'Inter, sans-serif',
-                }}
-                onMouseOver={e => (e.currentTarget.style.borderColor = 'var(--mm-primary)')}
-                onMouseOut={e => (e.currentTarget.style.borderColor = 'var(--mm-input-border)')}
+                onClick={() => setOpen(!open)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-white/5 transition-all text-sm font-semibold backdrop-blur-md"
             >
-                <span style={{ fontSize: 15 }}>{current.symbol}</span>
-                <span style={{ color: 'var(--mm-primary)' }}>{current.code}</span>
-                <ChevronDown size={12} style={{ opacity: 0.6, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                <span className="text-base">{current.symbol}</span>
+                <span className="text-indigo-600 dark:text-indigo-400">{current.code}</span>
+                <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
-
             <AnimatePresence>
                 {open && (
                     <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        style={{
-                            position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-                            width: 300, borderRadius: 16,
-                            background: 'var(--mm-card)', border: '1px solid var(--mm-card-border)',
-                            backdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-                            overflow: 'hidden',
-                        }}
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute right-0 top-full mt-2 w-72 rounded-2xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden"
                     >
-                        <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--mm-input-border)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--mm-input-bg)', borderRadius: 10, padding: '8px 12px', border: '1.5px solid var(--mm-input-border)' }}>
-                                <Search size={14} style={{ color: 'var(--mm-text-muted)', flexShrink: 0 }} />
-                                <input
-                                    autoFocus
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                    placeholder="Search currency..."
-                                    style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--mm-text)', fontSize: 13, width: '100%', fontFamily: 'Inter, sans-serif' }}
-                                />
+                        <div className="p-3 border-b border-gray-100 dark:border-white/10">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-100/50 dark:bg-black/40 rounded-lg">
+                                <Search size={14} className="text-gray-400" />
+                                <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search currency..." className="bg-transparent border-none outline-none text-sm w-full dark:text-white placeholder:text-gray-400" />
                             </div>
                         </div>
-                        <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                        <div className="max-h-60 overflow-y-auto p-2">
                             {filtered.map(c => (
                                 <button key={c.code} onClick={() => { onChange(c); setOpen(false); setSearch(''); }}
-                                    style={{
-                                        display: 'flex', width: '100%', alignItems: 'center', gap: 10,
-                                        padding: '10px 14px', background: current.code === c.code ? 'rgba(59,130,246,0.12)' : 'transparent',
-                                        border: 'none', cursor: 'pointer', borderLeft: current.code === c.code ? '3px solid var(--mm-primary)' : '3px solid transparent',
-                                        textAlign: 'left', transition: 'background 0.15s', fontFamily: 'Inter, sans-serif',
-                                    }}
-                                    onMouseOver={e => { if (current.code !== c.code) e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; }}
-                                    onMouseOut={e => { if (current.code !== c.code) e.currentTarget.style.background = 'transparent'; }}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${current.code === c.code ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
                                 >
-                                    <span style={{ width: 28, fontWeight: 700, color: 'var(--mm-text)', fontSize: c.symbol.length > 2 ? 11 : 16, textAlign: 'center' }}>{c.symbol}</span>
-                                    <div>
-                                        <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--mm-text)' }}>{c.code} — {c.name}</p>
-                                        <p style={{ margin: 0, fontSize: 11, color: 'var(--mm-text-muted)' }}>{c.country}</p>
+                                    <span className="w-8 text-center font-bold text-gray-900 dark:text-white">{c.symbol}</span>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{c.code} — {c.name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{c.country}</p>
                                     </div>
-                                    {current.code === c.code && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--mm-primary)' }} />}
+                                    {current.code === c.code && <Check size={16} className="text-indigo-600 dark:text-indigo-400" />}
                                 </button>
                             ))}
                         </div>
@@ -208,392 +94,599 @@ function CurrencySelector({ current, onChange }: { current: Currency; onChange: 
     );
 }
 
-/* ─── Stat Card ──────────────────────────────────────────────────────── */
-function StatCard({ title, value, icon, accent, sub, gradient }: {
-    title: string; value: string; icon: React.ReactNode;
-    accent: string; sub: string; gradient?: string;
-}) {
+/* ─── Transaction Row ─────────────────────────────────────────────────────── */
+function TxnRow({ t, sym, onDelete }: { t: Transaction; sym: string; onDelete: () => void }) {
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mm-card"
-            style={gradient ? { background: gradient, border: 'none', padding: 24 } : { padding: 24 }}
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+            className="flex items-center justify-between group py-3 border-b border-gray-100 dark:border-white/5 last:border-0"
         >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: gradient ? 'rgba(255,255,255,0.85)' : 'var(--mm-text-muted)' }}>{title}</h3>
-                <div style={{
-                    padding: 10, borderRadius: 12,
-                    background: gradient ? 'rgba(255,255,255,0.2)' : `${accent}22`,
-                    color: gradient ? '#fff' : accent,
-                    display: 'flex', alignItems: 'center',
-                }}>
-                    {icon}
+            <div className="flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                    {t.type === 'income' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+                </div>
+                <div>
+                    <p className="text-sm font-bold">{t.type === 'income' ? t.source : t.category}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.date} · {t.type === 'income' ? 'Income' : 'Expense'}</p>
                 </div>
             </div>
-            <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: gradient ? '#fff' : 'var(--mm-text)', letterSpacing: '-1px' }}>{value}</p>
-            <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 600, color: gradient ? 'rgba(255,255,255,0.75)' : accent }}>{sub}</p>
+            <div className="flex items-center gap-3">
+                <p className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {t.type === 'income' ? '+' : '-'}{sym}{t.amount.toLocaleString()}
+                </p>
+                <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 p-1.5 transition-all hover:bg-rose-500/10 text-rose-500 rounded-lg">
+                    <Trash2 size={14} />
+                </button>
+            </div>
         </motion.div>
     );
 }
 
-/* ─── Dashboard ──────────────────────────────────────────────────────── */
+/* ─── Toggle Switch ───────────────────────────────────────────────────────── */
+function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+    return (
+        <button onClick={onToggle}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${on ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+        >
+            <motion.span
+                animate={{ x: on ? 24 : 2 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                className="absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow block"
+            />
+        </button>
+    );
+}
+
+/* ─── Main Dashboard ─────────────────────────────────────────────────────── */
 const Dashboard: React.FC = () => {
-    const [isDark, setIsDark] = useState(false);
+    const [isDark, setIsDark] = useState<boolean>(true);
+    const [activeTab, setActiveTab] = useState('dashboard');
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [showIncomeForm, setShowIncomeForm] = useState(false);
     const [showExpenseForm, setShowExpenseForm] = useState(false);
-    const [incomeForm, setIncomeForm] = useState({ amount: '', source: '' });
-    const [expenseForm, setExpenseForm] = useState({ amount: '', category: '' });
+    const [incForm, setIncForm] = useState({ amount: '', source: '' });
+    const [expForm, setExpForm] = useState({ amount: '', category: '' });
+    const [txnSearch, setTxnSearch] = useState('');
+    const [txnFilter, setTxnFilter] = useState<'all' | 'income' | 'expense'>('all');
     const [currency, setCurrency] = useState<Currency>(() => {
-        try { return JSON.parse(localStorage.getItem('mm_currency') || '{}'); } catch { return CURRENCIES[0]; }
+        try {
+            const c = JSON.parse(localStorage.getItem('mm_currency') || '{}') as Partial<Currency>;
+            return c.code ? (c as Currency) : CURRENCIES[0];
+        } catch { return CURRENCIES[0]; }
     });
     const navigate = useNavigate();
 
+    /* Init */
     useEffect(() => {
         const saved = localStorage.getItem('transactions');
-        if (saved) setTransactions(JSON.parse(saved));
-        if (localStorage.getItem('theme') === 'dark') setIsDark(true);
-        const savedCur = localStorage.getItem('mm_currency');
-        if (savedCur) { try { setCurrency(JSON.parse(savedCur)); } catch { } }
+        if (saved) {
+            try {
+                const parsed: unknown = JSON.parse(saved);
+                if (Array.isArray(parsed)) setTransactions(parsed as Transaction[]);
+            } catch { setTransactions([]); }
+        }
+        const theme = localStorage.getItem('theme');
+        if (theme) setIsDark(theme === 'dark');
+        else setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
     }, []);
 
+    /* Sync */
     useEffect(() => { localStorage.setItem('transactions', JSON.stringify(transactions)); }, [transactions]);
-    useEffect(() => { localStorage.setItem('theme', isDark ? 'dark' : 'light'); }, [isDark]);
+    useEffect(() => {
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        if (isDark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+    }, [isDark]);
     useEffect(() => { localStorage.setItem('mm_currency', JSON.stringify(currency)); }, [currency]);
 
+    /* Derived */
     const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const balance = totalIncome - totalExpense;
-
     const sym = currency.symbol || '$';
-    const fmt = (n: number) => `${sym}${n.toFixed(2)}`;
+    const fmt = (n: number) => `${sym}${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    const addIncome = () => {
-        if (!incomeForm.amount || !incomeForm.source) return;
-        setTransactions([{ id: Date.now().toString(), type: 'income', amount: parseFloat(incomeForm.amount), category: 'Income', source: incomeForm.source, date: new Date().toLocaleDateString(), timestamp: Date.now() }, ...transactions]);
-        setIncomeForm({ amount: '', source: '' }); setShowIncomeForm(false);
-    };
-    const addExpense = () => {
-        if (!expenseForm.amount || !expenseForm.category) return;
-        setTransactions([{ id: Date.now().toString(), type: 'expense', amount: parseFloat(expenseForm.amount), category: expenseForm.category, date: new Date().toLocaleDateString(), timestamp: Date.now() }, ...transactions]);
-        setExpenseForm({ amount: '', category: '' }); setShowExpenseForm(false);
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('loginTime');
-        navigate('/login');
+    const addTxn = (type: 'income' | 'expense') => {
+        if (type === 'income') {
+            if (!incForm.amount || !incForm.source) return;
+            setTransactions([{ id: Date.now().toString(), type, amount: parseFloat(incForm.amount), category: 'Income', source: incForm.source, date: new Date().toLocaleDateString(), timestamp: Date.now() }, ...transactions]);
+            setIncForm({ amount: '', source: '' }); setShowIncomeForm(false);
+        } else {
+            if (!expForm.amount || !expForm.category) return;
+            setTransactions([{ id: Date.now().toString(), type, amount: parseFloat(expForm.amount), category: expForm.category, date: new Date().toLocaleDateString(), timestamp: Date.now() }, ...transactions]);
+            setExpForm({ amount: '', category: '' }); setShowExpenseForm(false);
+        }
     };
 
-    const expByCat = EXPENSE_CATEGORIES.map(cat => ({
-        name: cat,
-        value: transactions.filter(t => t.type === 'expense' && t.category === cat).reduce((s, t) => s + t.amount, 0)
-    })).filter(i => i.value > 0);
+    const handleLogout = () => { localStorage.removeItem('isAuthenticated'); localStorage.removeItem('userEmail'); navigate('/login'); };
 
-    const last7 = Array.from({ length: 7 }, (_, i) => {
+    /* Chart data */
+    const last7 = Array.from({ length: 7 }, (_: unknown, i: number) => {
         const d = new Date(); d.setDate(d.getDate() - (6 - i));
         const ds = d.toLocaleDateString();
         return {
-            date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            income: transactions.filter(t => t.type === 'income' && t.date === ds).reduce((s, t) => s + t.amount, 0),
-            expense: transactions.filter(t => t.type === 'expense' && t.date === ds).reduce((s, t) => s + t.amount, 0),
+            date: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            Income: transactions.filter((t: Transaction) => t.type === 'income' && t.date === ds).reduce((s: number, t: Transaction) => s + t.amount, 0),
+            Expense: transactions.filter((t: Transaction) => t.type === 'expense' && t.date === ds).reduce((s: number, t: Transaction) => s + t.amount, 0),
         };
     });
 
-    const userEmail = localStorage.getItem('userEmail') || '';
-    const userName = localStorage.getItem('userName') || userEmail;
-    const initials = userName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
+    const pieData = EXPENSE_CATEGORIES.map(cat => ({
+        name: cat, value: transactions.filter((t: Transaction) => t.type === 'expense' && t.category === cat).reduce((s: number, t: Transaction) => s + t.amount, 0)
+    })).filter(d => d.value > 0);
 
-    const gridColour = isDark ? '#1e293b' : '#e2e8f0';
-    const axisColour = isDark ? '#64748b' : '#94a3b8';
-    const tooltipStyle = { backgroundColor: isDark ? '#1e293b' : '#fff', border: `1px solid ${gridColour}`, borderRadius: 12, color: 'var(--mm-text)' };
+    const incomePieData = INCOME_SOURCES.map(src => ({
+        name: src, value: transactions.filter((t: Transaction) => t.type === 'income' && t.source === src).reduce((s: number, t: Transaction) => s + t.amount, 0)
+    })).filter(d => d.value > 0);
 
-    return (
-        <div className={isDark ? 'mm-dark' : ''}>
-            {/* Inject CSS vars */}
-            <style>{CSS_VARS}</style>
+    /* User */
+    const userEmail = localStorage.getItem('userEmail') || 'user@example.com';
+    const userName = localStorage.getItem('userName') || userEmail.split('@')[0];
+    const initials = userName.split(' ').map((w: string) => w[0]).join('').substring(0, 2).toUpperCase();
 
-            <div className="mm-root" style={{ minHeight: '100vh', background: isDark ? 'linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%)' : 'linear-gradient(135deg,#eff6ff 0%,#f0fdf4 50%,#faf5ff 100%)', transition: 'background 0.3s' }}>
+    /* Styles */
+    const cardBg = "bg-white/70 dark:bg-[#1A1C23]/70 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-xl";
+    const inputClass = "w-full bg-black/5 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium text-sm";
 
-                {/* ── HERO ─────────────────────────────────────────── */}
-                <section style={{ position: 'relative', overflow: 'hidden', color: '#fff', padding: '80px 16px' }}>
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,rgba(37,99,235,0.90) 0%,rgba(5,150,105,0.82) 100%)' }} />
-                    {/* Decorative blobs */}
-                    <div style={{ position: 'absolute', top: -60, right: -60, width: 320, height: 320, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', filter: 'blur(40px)' }} />
-                    <div style={{ position: 'absolute', bottom: -80, left: -80, width: 400, height: 400, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', filter: 'blur(50px)' }} />
-                    <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 2 }}>
-                        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', borderRadius: 30, padding: '6px 18px', marginBottom: 24, fontSize: 13, fontWeight: 600 }}>
-                            <span>✦</span> Smart Financial Dashboard
+    /* Sparklines */
+    const mockSparkline = last7.map(d => ({ value: d.Income > 0 ? d.Income : Math.random() * 500 + 100 }));
+    const mockSparklineExp = last7.map(d => ({ value: d.Expense > 0 ? d.Expense : Math.random() * 300 + 50 }));
+
+    /* Filtered transactions for Transactions tab */
+    const filteredTxns = transactions.filter(t => {
+        const matchType = txnFilter === 'all' || t.type === txnFilter;
+        const matchSearch = !txnSearch || (t.type === 'income' ? t.source : t.category)?.toLowerCase().includes(txnSearch.toLowerCase()) || t.date.includes(txnSearch);
+        return matchType && matchSearch;
+    });
+
+    const tooltipStyle = { backgroundColor: isDark ? '#1f2937' : '#ffffff', borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.2)', color: isDark ? '#fff' : '#000' };
+    const gridColor = isDark ? '#333' : '#e5e7eb';
+    const tickColor = isDark ? '#9ca3af' : '#6b7280';
+
+    /* ── Renders ── */
+    const renderDashboard = () => (
+        <div>
+            {/* Hero */}
+            <div className="relative rounded-3xl overflow-hidden mb-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 p-[1px] shadow-2xl shadow-indigo-500/10">
+                <div className="relative bg-white/90 dark:bg-[#12141D]/90 rounded-[23px] p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 backdrop-blur-xl">
+                    <div>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase mb-4">
+                            <Zap size={12} fill="currentColor" /> Premium Dashboard
                         </motion.div>
-                        <motion.h1 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                            style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', fontWeight: 800, margin: '0 0 16px', lineHeight: 1.1, letterSpacing: '-1px' }}>
-                            Smart Money Management<br />
-                            <span style={{ background: 'linear-gradient(90deg,#bfdbfe,#a7f3d0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                for Your Business
-                            </span>
-                        </motion.h1>
-                        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                            style={{ fontSize: '1.1rem', opacity: 0.85, marginBottom: 32 }}>
-                            Track expenses, manage income, and grow with powerful analytics
+                        <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
+                            Welcome back, {userName.split(' ')[0]}
+                        </motion.h2>
+                        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-gray-500 dark:text-gray-400">
+                            Here's your financial overview for today.
                         </motion.p>
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                            style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <button
-                                onClick={() => { setShowIncomeForm(true); setShowExpenseForm(false); setTimeout(() => document.getElementById('action-section')?.scrollIntoView({ behavior: 'smooth' }), 80); }}
-                                style={{ padding: '14px 32px', background: '#fff', color: '#2563eb', borderRadius: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: 15, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', transition: 'transform 0.2s,box-shadow 0.2s', fontFamily: 'Inter,sans-serif' }}
-                                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.2)'; }}
-                                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; }}
-                            >
-                                Get Started Free
-                            </button>
-                            <button style={{ padding: '14px 32px', background: 'rgba(255,255,255,0.12)', color: '#fff', borderRadius: 12, fontWeight: 700, border: '2px solid rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: 15, backdropFilter: 'blur(10px)', fontFamily: 'Inter,sans-serif' }}>
-                                Watch Demo
-                            </button>
-                        </motion.div>
                     </div>
-                </section>
-
-                {/* ── NAVBAR ───────────────────────────────────────── */}
-                <nav className="mm-nav" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-                    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 16px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        {/* Logo */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#3b82f6,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59,130,246,0.35)' }}>
-                                <DollarSign size={20} color="#fff" />
-                            </div>
-                            <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--mm-text)' }}>MoneyManager</span>
-                        </div>
-
-                        {/* Right controls */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            {/* User avatar */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 4 }}>
-                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, boxShadow: '0 4px 12px rgba(99,102,241,0.4)', flexShrink: 0 }}>
-                                    {initials}
-                                </div>
-                                <div style={{ display: 'none' }} className="hidden md:block">
-                                    <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--mm-text)', lineHeight: 1.2 }}>{userName}</p>
-                                    <p style={{ margin: 0, fontSize: 11, color: 'var(--mm-text-muted)' }}>{userEmail}</p>
-                                </div>
-                            </div>
-
-                            <CurrencySelector current={currency} onChange={setCurrency} />
-
-                            {/* Theme toggle */}
-                            <button
-                                onClick={() => setIsDark(d => !d)}
-                                style={{ padding: 9, borderRadius: 10, border: '1.5px solid var(--mm-input-border)', background: 'var(--mm-input-bg)', color: 'var(--mm-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }}
-                                title="Toggle theme"
-                            >
-                                {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                            </button>
-
-                            {/* Logout */}
-                            <button
-                                onClick={handleLogout}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(239,68,68,0.35)', transition: 'all 0.2s', fontFamily: 'Inter,sans-serif' }}
-                                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(239,68,68,0.45)'; }}
-                                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(239,68,68,0.35)'; }}
-                            >
-                                <LogOut size={15} />
-                                <span>Logout</span>
-                            </button>
-                        </div>
-                    </div>
-                </nav>
-
-                {/* ── MAIN CONTENT ─────────────────────────────────── */}
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 16px 64px' }}>
-
-                    {/* Stat Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 20, marginBottom: 28 }}>
-                        <StatCard
-                            title="Total Income" value={fmt(totalIncome)}
-                            icon={<TrendingUp size={20} />} accent="#10b981"
-                            sub="↑ All time earnings"
-                        />
-                        <StatCard
-                            title="Total Expenses" value={fmt(totalExpense)}
-                            icon={<TrendingDown size={20} />} accent="#ef4444"
-                            sub="↓ All time spending"
-                        />
-                        <StatCard
-                            title="Net Balance" value={fmt(balance)}
-                            icon={<DollarSign size={20} />}
-                            accent={balance >= 0 ? '#10b981' : '#ef4444'}
-                            sub={balance >= 0 ? "You're in the green 💚" : "Expenses exceed income"}
-                            gradient={balance >= 0
-                                ? 'linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%)'
-                                : 'linear-gradient(135deg,#ef4444 0%,#b91c1c 100%)'}
-                        />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div id="action-section" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 28 }}>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                            onClick={() => { setShowIncomeForm(v => !v); setShowExpenseForm(false); }}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 24px', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none', borderRadius: 14, fontWeight: 700, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 20px rgba(16,185,129,0.35)', fontFamily: 'Inter,sans-serif' }}>
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="flex gap-3 w-full md:w-auto">
+                        <button onClick={() => { setShowIncomeForm(true); setShowExpenseForm(false); }} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20">
                             <Plus size={18} /> Add Income
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                            onClick={() => { setShowExpenseForm(v => !v); setShowIncomeForm(false); }}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 24px', background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', border: 'none', borderRadius: 14, fontWeight: 700, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 20px rgba(239,68,68,0.35)', fontFamily: 'Inter,sans-serif' }}>
-                            <Plus size={18} /> Add Expense
-                        </motion.button>
-                    </div>
-
-                    {/* Forms */}
-                    <AnimatePresence>
-                        {showIncomeForm && (
-                            <motion.div key="inc" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                                className="mm-card" style={{ padding: 24, marginBottom: 24, overflow: 'hidden' }}>
-                                <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: 'var(--mm-text)' }}>➕ Add Income</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <input type="number" placeholder={`Amount (${sym})`} value={incomeForm.amount}
-                                        onChange={e => setIncomeForm(f => ({ ...f, amount: e.target.value }))}
-                                        className="mm-input" />
-                                    <select value={incomeForm.source}
-                                        onChange={e => setIncomeForm(f => ({ ...f, source: e.target.value }))}
-                                        className="mm-input" style={{ cursor: 'pointer' }}>
-                                        <option value="">Select Income Source</option>
-                                        {INCOME_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                    <div style={{ display: 'flex', gap: 10 }}>
-                                        <button onClick={addIncome} style={{ flex: 1, padding: '12px 20px', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontSize: 14, fontFamily: 'Inter,sans-serif' }}>Add Income</button>
-                                        <button onClick={() => setShowIncomeForm(false)} style={{ padding: '12px 20px', background: 'var(--mm-input-bg)', color: 'var(--mm-text)', border: '1.5px solid var(--mm-input-border)', borderRadius: 12, fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'Inter,sans-serif' }}>Cancel</button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                        {showExpenseForm && (
-                            <motion.div key="exp" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                                className="mm-card" style={{ padding: 24, marginBottom: 24, overflow: 'hidden' }}>
-                                <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: 'var(--mm-text)' }}>➖ Add Expense</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <input type="number" placeholder={`Amount (${sym})`} value={expenseForm.amount}
-                                        onChange={e => setExpenseForm(f => ({ ...f, amount: e.target.value }))}
-                                        className="mm-input" />
-                                    <select value={expenseForm.category}
-                                        onChange={e => setExpenseForm(f => ({ ...f, category: e.target.value }))}
-                                        className="mm-input" style={{ cursor: 'pointer' }}>
-                                        <option value="">Select Category</option>
-                                        {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <div style={{ display: 'flex', gap: 10 }}>
-                                        <button onClick={addExpense} style={{ flex: 1, padding: '12px 20px', background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontSize: 14, fontFamily: 'Inter,sans-serif' }}>Add Expense</button>
-                                        <button onClick={() => setShowExpenseForm(false)} style={{ padding: '12px 20px', background: 'var(--mm-input-bg)', color: 'var(--mm-text)', border: '1.5px solid var(--mm-input-border)', borderRadius: 12, fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'Inter,sans-serif' }}>Cancel</button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Charts */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20, marginBottom: 28 }}>
-                        <div className="mm-card" style={{ padding: 24 }}>
-                            <h3 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: 'var(--mm-text)' }}>📈 7-Day Trend</h3>
-                            <ResponsiveContainer width="100%" height={230}>
-                                <LineChart data={last7}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke={gridColour} />
-                                    <XAxis dataKey="date" stroke={axisColour} tick={{ fontSize: 11 }} />
-                                    <YAxis stroke={axisColour} tick={{ fontSize: 11 }} />
-                                    <Tooltip contentStyle={tooltipStyle} />
-                                    <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} />
-                                    <Line type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4 }} />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="mm-card" style={{ padding: 24 }}>
-                            <h3 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: 'var(--mm-text)' }}>🍩 Expenses by Category</h3>
-                            {expByCat.length === 0
-                                ? <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mm-text-muted)', fontSize: 14 }}>No expenses yet</div>
-                                : <ResponsiveContainer width="100%" height={230}>
-                                    <RechartsPie>
-                                        <Pie data={expByCat} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={({ name }) => name} labelLine={false}>
-                                            {expByCat.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                                        </Pie>
-                                        <Tooltip contentStyle={tooltipStyle} />
-                                    </RechartsPie>
-                                </ResponsiveContainer>
-                            }
-                        </div>
-                    </div>
-
-                    {/* Transactions */}
-                    <div className="mm-card" style={{ padding: 24, marginBottom: 28 }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: 'var(--mm-text)' }}>📋 Recent Transactions</h3>
-                        {transactions.length === 0
-                            ? <p style={{ textAlign: 'center', color: 'var(--mm-text-muted)', padding: '32px 0', margin: 0 }}>No transactions yet. Add your first income or expense above!</p>
-                            : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {transactions.slice(0, 12).map(t => (
-                                    <motion.div key={t.id} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: isDark ? 'rgba(30,41,59,0.6)' : 'rgba(248,250,252,0.8)', border: '1px solid var(--mm-input-border)', transition: 'background 0.2s' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 38, height: 38, borderRadius: 10, background: t.type === 'income' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                {t.type === 'income'
-                                                    ? <ArrowUpRight size={18} color="#10b981" />
-                                                    : <ArrowDownRight size={18} color="#ef4444" />}
-                                            </div>
-                                            <div>
-                                                <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--mm-text)' }}>{t.type === 'income' ? t.source : t.category}</p>
-                                                <p style={{ margin: 0, fontSize: 12, color: 'var(--mm-text-muted)' }}>{t.date}</p>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <span style={{ fontWeight: 700, fontSize: 15, color: t.type === 'income' ? '#10b981' : '#ef4444' }}>
-                                                {t.type === 'income' ? '+' : '-'}{sym}{t.amount.toFixed(2)}
-                                            </span>
-                                            <button onClick={() => setTransactions(prev => prev.filter(x => x.id !== t.id))}
-                                                style={{ padding: 7, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}
-                                                onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
-                                                onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
-                                                <Trash2 size={15} />
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        }
-                    </div>
-
-                    {/* Features */}
-                    <section style={{ marginBottom: 48 }}>
-                        <h2 style={{ textAlign: 'center', fontSize: 'clamp(1.5rem,3vw,2.25rem)', fontWeight: 800, color: 'var(--mm-text)', marginBottom: 32 }}>Why Choose MoneyManager?</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 20 }}>
-                            {[
-                                { icon: <Target size={28} color="#3b82f6" />, title: 'Goal Tracking', desc: 'Set and achieve your financial goals with smart targets', bg: 'rgba(59,130,246,0.1)' },
-                                { icon: <PieChart size={28} color="#8b5cf6" />, title: 'Smart Analytics', desc: 'Visualize spending patterns with beautiful charts', bg: 'rgba(139,92,246,0.1)' },
-                                { icon: <Award size={28} color="#f59e0b" />, title: 'Business Ready', desc: 'Built for entrepreneurs, freelancers, and teams', bg: 'rgba(245,158,11,0.1)' },
-                            ].map((f, i) => (
-                                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                                    className="mm-card" style={{ padding: 28, textAlign: 'center' }}>
-                                    <div style={{ width: 60, height: 60, borderRadius: 16, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>{f.icon}</div>
-                                    <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--mm-text)' }}>{f.title}</h3>
-                                    <p style={{ margin: 0, fontSize: 13, color: 'var(--mm-text-muted)', lineHeight: 1.5 }}>{f.desc}</p>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* CTA Banner */}
-                    <section style={{ borderRadius: 24, overflow: 'hidden', background: 'linear-gradient(135deg,#2563eb,#059669)', padding: '48px 32px', textAlign: 'center', color: '#fff', marginBottom: 48 }}>
-                        <h2 style={{ margin: '0 0 12px', fontSize: 'clamp(1.4rem,3vw,2rem)', fontWeight: 800 }}>Ready to Take Control?</h2>
-                        <p style={{ margin: '0 0 24px', opacity: 0.85, fontSize: 16 }}>Join thousands managing their finances smarter with MoneyManager</p>
-                        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', fontSize: 14, opacity: 0.9 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={16} /> contact@moneymanager.com</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={16} /> +1 (555) 123-4567</div>
-                        </div>
-                    </section>
-
-                    {/* Footer */}
-                    <footer style={{ textAlign: 'center', color: 'var(--mm-text-muted)', fontSize: 13, paddingTop: 16, borderTop: '1px solid var(--mm-input-border)' }}>
-                        <p style={{ margin: 0 }}>© 2025 MoneyManager. All rights reserved. Built with ❤️</p>
-                    </footer>
+                        </button>
+                        <button onClick={() => { setShowExpenseForm(true); setShowIncomeForm(false); }} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 rounded-xl font-bold transition-all">
+                            <Receipt size={18} /> Add Expense
+                        </button>
+                    </motion.div>
                 </div>
             </div>
+
+            {/* Form */}
+            <AnimatePresence>
+                {(showIncomeForm || showExpenseForm) && (
+                    <motion.div initial={{ opacity: 0, height: 0, y: -20 }} animate={{ opacity: 1, height: 'auto', y: 0 }} exit={{ opacity: 0, height: 0, y: -20 }} className={`mb-8 ${cardBg} rounded-3xl p-6 overflow-hidden`}>
+                        <div className="max-w-xl mx-auto flex flex-col sm:flex-row gap-4">
+                            <input type="number" placeholder={`Amount (${sym})`} value={showIncomeForm ? incForm.amount : expForm.amount} onChange={e => showIncomeForm ? setIncForm({ ...incForm, amount: e.target.value }) : setExpForm({ ...expForm, amount: e.target.value })} className={inputClass} autoFocus />
+                            <select value={showIncomeForm ? incForm.source : expForm.category} onChange={e => showIncomeForm ? setIncForm({ ...incForm, source: e.target.value }) : setExpForm({ ...expForm, category: e.target.value })} className={`${inputClass} appearance-none cursor-pointer`}>
+                                <option value="">Select {showIncomeForm ? 'Source' : 'Category'}</option>
+                                {(showIncomeForm ? INCOME_SOURCES : EXPENSE_CATEGORIES).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <div className="flex gap-2">
+                                <button onClick={() => addTxn(showIncomeForm ? 'income' : 'expense')} className={`px-6 py-3 rounded-xl font-bold text-white transition-all whitespace-nowrap ${showIncomeForm ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}>Save</button>
+                                <button onClick={() => { setShowIncomeForm(false); setShowExpenseForm(false); }} className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition-all">Cancel</button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Metric Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <motion.div whileHover={{ y: -4 }} className={`${cardBg} rounded-3xl p-6 relative overflow-hidden group`}>
+                    <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity"><Wallet size={100} className="text-indigo-500 rotate-12" /></div>
+                    <div className="relative z-10">
+                        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Total Balance</p>
+                        <p className={`text-4xl font-extrabold tracking-tight mb-2 ${balance < 0 ? 'text-rose-500' : ''}`}>{balance < 0 ? '-' : ''}{fmt(balance)}</p>
+                        <div className={`flex items-center gap-2 text-sm font-medium w-fit px-2.5 py-1 rounded-full ${balance >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}`}>
+                            <Target size={14} /> {balance >= 0 ? 'On track' : 'Overspent'}
+                        </div>
+                    </div>
+                </motion.div>
+                <motion.div whileHover={{ y: -4 }} className={`${cardBg} rounded-3xl p-6 flex flex-col justify-between`}>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Income</p>
+                        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500"><ArrowUpRight size={18} /></div>
+                    </div>
+                    <p className="text-3xl font-extrabold tracking-tight mb-1">{fmt(totalIncome)}</p>
+                    <div className="h-12 w-full mt-4 -mx-2 -mb-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={mockSparkline}>
+                                <defs><linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
+                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorInc)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </motion.div>
+                <motion.div whileHover={{ y: -4 }} className={`${cardBg} rounded-3xl p-6 flex flex-col justify-between`}>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Expenses</p>
+                        <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500"><ArrowDownRight size={18} /></div>
+                    </div>
+                    <p className="text-3xl font-extrabold tracking-tight mb-1">{fmt(totalExpense)}</p>
+                    <div className="h-12 w-full mt-4 -mx-2 -mb-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={mockSparklineExp}>
+                                <defs><linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/><stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/></linearGradient></defs>
+                                <Area type="monotone" dataKey="value" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExp)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Chart + Recent */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className={`lg:col-span-2 ${cardBg} rounded-3xl p-6 md:p-8`}>
+                    <h3 className="text-lg font-bold mb-6">Income vs Expenses (Last 7 Days)</h3>
+                    <div className="min-h-[280px]">
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={last7} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} dx={-10} />
+                                <Tooltip cursor={{ fill: isDark ? '#ffffff0a' : '#0000000a' }} contentStyle={tooltipStyle} />
+                                <Bar dataKey="Income" fill="#6366f1" radius={[6,6,0,0]} barSize={12} />
+                                <Bar dataKey="Expense" fill="#f43f5e" radius={[6,6,0,0]} barSize={12} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                <div className={`${cardBg} rounded-3xl p-6 md:p-8`}>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold">Recent</h3>
+                        <button onClick={() => setActiveTab('transactions')} className="text-xs font-semibold text-indigo-500 hover:text-indigo-600">View All →</button>
+                    </div>
+                    <div className="space-y-1">
+                        {transactions.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                                <Receipt size={36} className="mb-2" /><p className="text-sm">No transactions yet.</p>
+                            </div>
+                        ) : transactions.slice(0, 5).map((t, _i) => (
+                            <TxnRow key={t.id} t={t} sym={sym} onDelete={() => setTransactions(prev => prev.filter(x => x.id !== t.id))} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderTransactions = () => (
+        <div>
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className={`flex items-center gap-2 flex-1 px-4 py-3 ${cardBg} rounded-2xl`}>
+                    <Search size={16} className="text-gray-400 flex-shrink-0" />
+                    <input value={txnSearch} onChange={e => setTxnSearch(e.target.value)} placeholder="Search by category, source or date..." className="bg-transparent outline-none text-sm w-full" />
+                </div>
+                <div className={`flex gap-2 ${cardBg} rounded-2xl p-1.5`}>
+                    {(['all', 'income', 'expense'] as const).map(f => (
+                        <button key={f} onClick={() => setTxnFilter(f)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all ${txnFilter === f ? (f === 'income' ? 'bg-emerald-500 text-white' : f === 'expense' ? 'bg-rose-500 text-white' : 'bg-indigo-500 text-white') : 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5'}`}
+                        >{f}</button>
+                    ))}
+                    <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5">
+                        <Filter size={12} /> Filter
+                    </button>
+                </div>
+            </div>
+
+            <div className={`${cardBg} rounded-3xl p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold">All Transactions</h3>
+                    <span className="text-xs font-semibold text-gray-400 bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full">{filteredTxns.length} records</span>
+                </div>
+                {filteredTxns.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                        <Receipt size={48} className="mb-4" />
+                        <p className="text-base font-semibold">No transactions found</p>
+                        <p className="text-sm mt-1">Try adjusting your filters</p>
+                    </div>
+                ) : (
+                    <div>
+                        {filteredTxns.map((t, _i) => (
+                            <TxnRow key={t.id} t={t} sym={sym} onDelete={() => setTransactions(prev => prev.filter(x => x.id !== t.id))} />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                {[
+                    { label: 'Total Records', value: transactions.length.toString(), icon: Receipt, color: 'indigo' },
+                    { label: 'Total Income', value: fmt(totalIncome), icon: TrendingUp, color: 'emerald' },
+                    { label: 'Total Expenses', value: fmt(totalExpense), icon: TrendingDown, color: 'rose' },
+                ].map(({ label, value, icon: Icon, color }) => (
+                    <div key={label} className={`${cardBg} rounded-2xl p-5 flex items-center gap-4`}>
+                        <div className={`p-3 rounded-xl bg-${color}-500/10 text-${color}-500`}><Icon size={20} /></div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{label}</p>
+                            <p className="text-lg font-extrabold">{value}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderAnalytics = () => (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Bar chart */}
+                <div className={`${cardBg} rounded-3xl p-6 md:p-8`}>
+                    <h3 className="text-lg font-bold mb-1">Weekly Income vs Expenses</h3>
+                    <p className="text-xs text-gray-400 mb-6">Last 7 days overview</p>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={last7} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} />
+                            <Tooltip contentStyle={tooltipStyle} cursor={{ fill: isDark ? '#ffffff0a' : '#0000000a' }} />
+                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '16px' }} />
+                            <Bar dataKey="Income" fill="#6366f1" radius={[6,6,0,0]} barSize={14} />
+                            <Bar dataKey="Expense" fill="#f43f5e" radius={[6,6,0,0]} barSize={14} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Expense pie */}
+                <div className={`${cardBg} rounded-3xl p-6 md:p-8`}>
+                    <h3 className="text-lg font-bold mb-1">Expense Breakdown</h3>
+                    <p className="text-xs text-gray-400 mb-6">Spending by category</p>
+                    {pieData.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-60 opacity-40">
+                            <PieChart size={48} className="mb-3" /><p className="text-sm">No expense data yet</p>
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <RechartsPie>
+                                <Pie data={pieData} cx="50%" cy="45%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                                    {pieData.map((_entry, _index) => (
+                                        <Cell key={`cell-${_index}`} fill={CHART_COLORS[_index % CHART_COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={tooltipStyle} formatter={(val: number) => [`${sym}${val.toLocaleString()}`, '']} />
+                            </RechartsPie>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+            </div>
+
+            {/* Income pie */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className={`${cardBg} rounded-3xl p-6 md:p-8`}>
+                    <h3 className="text-lg font-bold mb-1">Income Sources</h3>
+                    <p className="text-xs text-gray-400 mb-6">Distribution by source</p>
+                    {incomePieData.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-60 opacity-40">
+                            <TrendingUp size={48} className="mb-3" /><p className="text-sm">No income data yet</p>
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <RechartsPie>
+                                <Pie data={incomePieData} cx="50%" cy="45%" outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                                    {incomePieData.map((_entry, _index) => (
+                                        <Cell key={`cell-${_index}`} fill={CHART_COLORS[_index % CHART_COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={tooltipStyle} formatter={(val: number) => [`${sym}${val.toLocaleString()}`, '']} />
+                            </RechartsPie>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+
+                {/* Summary stats */}
+                <div className={`${cardBg} rounded-3xl p-6 md:p-8 flex flex-col gap-4`}>
+                    <h3 className="text-lg font-bold mb-2">Summary Statistics</h3>
+                    {[
+                        { label: 'Net Balance', value: `${balance < 0 ? '-' : ''}${fmt(balance)}`, sub: balance >= 0 ? 'Positive' : 'Negative', color: balance >= 0 ? 'emerald' : 'rose' },
+                        { label: 'Savings Rate', value: totalIncome > 0 ? `${(((totalIncome - totalExpense) / totalIncome) * 100).toFixed(1)}%` : '—', sub: 'Of total income', color: 'indigo' },
+                        { label: 'Avg. Expense/Day', value: transactions.filter(t => t.type === 'expense').length > 0 ? fmt(totalExpense / 7) : '—', sub: 'Last 7 days', color: 'amber' },
+                        { label: 'Top Expense Category', value: pieData.sort((a, b) => b.value - a.value)[0]?.name || '—', sub: pieData[0] ? fmt(pieData[0].value) : '', color: 'fuchsia' },
+                    ].map(({ label, value, sub, color }) => (
+                        <div key={label} className={`flex items-center justify-between p-4 rounded-2xl bg-${color}-500/5 border border-${color}-500/10`}>
+                            <div>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
+                                <p className={`text-lg font-extrabold text-${color}-600 dark:text-${color}-400`}>{value}</p>
+                            </div>
+                            <span className="text-xs text-gray-400">{sub}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderSettings = () => (
+        <div className="max-w-2xl space-y-6">
+            {/* Appearance */}
+            <div className={`${cardBg} rounded-3xl p-6 md:p-8`}>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500"><Palette size={20} /></div>
+                    <div>
+                        <h3 className="text-base font-bold">Appearance</h3>
+                        <p className="text-xs text-gray-400">Customize your visual experience</p>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            {isDark ? <Moon size={18} className="text-indigo-400" /> : <Sun size={18} className="text-amber-500" />}
+                            <div>
+                                <p className="text-sm font-semibold">Dark Mode</p>
+                                <p className="text-xs text-gray-400">{isDark ? 'Dark theme is active' : 'Light theme is active'}</p>
+                            </div>
+                        </div>
+                        <Toggle on={isDark} onToggle={() => setIsDark(!isDark)} />
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                        <div>
+                            <p className="text-sm font-semibold">Currency</p>
+                            <p className="text-xs text-gray-400">Selected: {currency.name} ({currency.symbol})</p>
+                        </div>
+                        <CurrencySelector current={currency} onChange={setCurrency} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Profile */}
+            <div className={`${cardBg} rounded-3xl p-6 md:p-8`}>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-500"><User size={20} /></div>
+                    <div>
+                        <h3 className="text-base font-bold">Profile</h3>
+                        <p className="text-xs text-gray-400">Your account information</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">{initials}</div>
+                    <div>
+                        <p className="text-base font-bold">{userName}</p>
+                        <p className="text-sm text-gray-400">{userEmail}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Data */}
+            <div className={`${cardBg} rounded-3xl p-6 md:p-8`}>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500"><ShieldCheck size={20} /></div>
+                    <div>
+                        <h3 className="text-base font-bold">Data Management</h3>
+                        <p className="text-xs text-gray-400">Manage your stored data</p>
+                    </div>
+                </div>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-white/5">
+                        <div>
+                            <p className="text-sm font-semibold">Total Transactions</p>
+                            <p className="text-xs text-gray-400">{transactions.length} records stored</p>
+                        </div>
+                        <span className="text-xs font-bold bg-indigo-500/10 text-indigo-500 px-3 py-1 rounded-full">{transactions.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                        <div>
+                            <p className="text-sm font-semibold text-rose-500">Reset All Data</p>
+                            <p className="text-xs text-gray-400">Permanently delete all transactions</p>
+                        </div>
+                        <button
+                            onClick={() => { if (window.confirm('Are you sure? This will delete all your transaction data.')) { setTransactions([]); localStorage.removeItem('transactions'); } }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 font-bold text-sm transition-all"
+                        >
+                            <RefreshCw size={14} /> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Logout */}
+            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 font-bold transition-all">
+                <LogOut size={18} /> Sign Out
+            </button>
+        </div>
+    );
+
+    const tabContent: Record<string, () => React.ReactNode> = {
+        dashboard: renderDashboard,
+        transactions: renderTransactions,
+        analytics: renderAnalytics,
+        settings: renderSettings,
+    };
+
+    return (
+        <div className="flex h-screen overflow-hidden bg-[#F4F6F8] dark:bg-[#0B0D14] text-gray-900 dark:text-gray-100 font-sans">
+            {/* BG */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 blur-[120px]" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-fuchsia-500/10 blur-[120px]" />
+            </div>
+
+            {/* Sidebar */}
+            <aside className="relative z-20 w-64 border-r border-gray-200/50 dark:border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-xl flex-col hidden md:flex">
+                <div className="h-20 flex items-center px-6 border-b border-gray-200/50 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                            <Fingerprint className="text-white w-5 h-5" />
+                        </div>
+                        <span className="font-bold text-lg tracking-tight">SmartMoney</span>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto py-6 px-4 flex flex-col gap-1.5">
+                    {[
+                        { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+                        { id: 'transactions', icon: Receipt, label: 'Transactions' },
+                        { id: 'analytics', icon: PieChart, label: 'Analytics' },
+                        { id: 'settings', icon: Settings, label: 'Settings' }
+                    ].map(item => (
+                        <button key={item.id} onClick={() => setActiveTab(item.id)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-semibold ${activeTab === item.id ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200'}`}
+                        >
+                            <item.icon size={18} className={activeTab === item.id ? 'opacity-100' : 'opacity-70'} />
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+                <div className="p-4 border-t border-gray-200/50 dark:border-white/5">
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-xs">{initials}</div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate">{userName}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            {/* Main */}
+            <main className="relative z-10 flex-1 flex flex-col overflow-hidden">
+                <header className="relative z-50 h-20 flex items-center justify-between px-6 md:px-10 border-b border-gray-200/50 dark:border-white/5 bg-white/40 dark:bg-black/10 backdrop-blur-md">
+                    <h1 className="text-xl font-bold tracking-tight capitalize">{activeTab}</h1>
+                    <div className="flex items-center gap-3">
+                        <CurrencySelector current={currency} onChange={setCurrency} />
+                        <button className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-white/5 transition-all text-gray-600 dark:text-gray-300 backdrop-blur-md">
+                            <Bell size={18} />
+                        </button>
+                        <button onClick={() => setIsDark(!isDark)} className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-white/5 transition-all text-gray-600 dark:text-gray-300 backdrop-blur-md">
+                            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                        <button onClick={handleLogout} className="p-2.5 rounded-xl border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all">
+                            <LogOut size={18} />
+                        </button>
+                    </div>
+                </header>
+
+                <div className="flex-1 overflow-y-auto p-6 md:p-10">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -16 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            {(tabContent[activeTab] ?? tabContent['dashboard'])()}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
+            </main>
         </div>
     );
 };

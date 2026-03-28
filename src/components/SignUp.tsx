@@ -224,7 +224,7 @@ const SignUp: React.FC = () => {
                         )}
                     </div>
                 </div>
-                <p className="text-center text-white/70 text-xs mt-6">© 2024 MoneyManager. All rights reserved.</p>
+                <p className="text-center text-white/70 text-xs mt-6">© 2026 MoneyManager. All rights reserved.</p>
             </div>
         </div>
     );
